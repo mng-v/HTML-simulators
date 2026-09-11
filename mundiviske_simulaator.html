@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mündiviske simulatsioon</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 980px; margin: 32px auto; padding: 0 18px; color: #1f2937; }
+  h1 { color: #17365D; }
+  .box { background:#fff8dc; border-left:6px solid #d6b656; padding:14px 16px; margin:16px 0; }
+  .controls { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:18px 0; }
+  button { background:#2f80ed; color:white; border:none; border-radius:6px; padding:10px 16px; font-size:15px; cursor:pointer; }
+  button:hover { opacity:.92; }
+  select { padding:8px; font-size:15px; }
+  table { border-collapse:collapse; width:100%; margin-top:18px; }
+  th { background:#2f80ed; color:white; padding:10px; border:1px solid #d1d5db; }
+  td { padding:10px; border:1px solid #d1d5db; text-align:center; }
+  tr.active { background:#eaf3ff; font-weight:bold; }
+  .note { margin-top:14px; background:#eaf7ea; border-left:6px solid #4f9d69; padding:12px 14px; }
+  .barwrap { margin-top:22px; }
+  .barline { display:flex; align-items:center; gap:10px; margin:8px 0; }
+  .label { width:60px; }
+  .barbg { flex:1; height:24px; background:#eef2f7; border-radius:5px; overflow:hidden; }
+  .bar { height:100%; background:#2f80ed; }
+  .pct { width:70px; text-align:right; }
+</style>
+</head>
+<body>
+<h1>Mündiviske simulatsioon</h1>
+<div class="box">
+  Eeldame, et münt on õiglane: kulli ja kirja tõenäosus on mõlemal juhul 0,5 ehk 50%.
+  Simulatsioon näitab, kuidas suhteline sagedus muutub katsete arvu suurenedes.
+</div>
+
+<div class="controls">
+  <label for="nSelect"><strong>Vali visete arv:</strong></label>
+  <select id="nSelect">
+    <option value="50">50</option>
+    <option value="100">100</option>
+    <option value="500">500</option>
+    <option value="1000">1000</option>
+  </select>
+  <button id="runBtn">Simuleeri valitud rida</button>
+  <button id="runAllBtn">Simuleeri kõik read</button>
+</div>
+
+<table id="resultTable">
+  <thead>
+    <tr>
+      <th>Katsete arv</th>
+      <th>Kull arv</th>
+      <th>Kull %</th>
+      <th>Kiri arv</th>
+      <th>Kiri %</th>
+      <th>Erinevus 50%-st</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<div class="barwrap">
+  <h3>Valitud simulatsiooni tulemus</h3>
+  <div class="barline"><div class="label">Kull</div><div class="barbg"><div id="kullBar" class="bar" style="width:0%"></div></div><div id="kullPct" class="pct">0%</div></div>
+  <div class="barline"><div class="label">Kiri</div><div class="barbg"><div id="kiriBar" class="bar" style="width:0%"></div></div><div id="kiriPct" class="pct">0%</div></div>
+</div>
+
+<div class="note">
+  <strong>Pane tähele.</strong> Tulemus ei pea iga kord samm-sammult 50%-le lähenema. Väikese arvu katsete korral võivad suhtelised sagedused palju kõikuda. Suure katsete arvu korral muutuvad need tavaliselt stabiilsemaks ja jäävad 50% lähedale.
+</div>
+
+<script>
+const sizes = [50,100,500,1000];
+const tbody = document.querySelector('#resultTable tbody');
+let results = {};
+
+function simulate(n){
+  let kull = 0;
+  for(let i=0;i<n;i++) if(Math.random()<0.5) kull++;
+  const kiri = n-kull;
+  const kullPct = kull/n*100;
+  const kiriPct = kiri/n*100;
+  return {n,kull,kiri,kullPct,kiriPct,diff:Math.abs(kullPct-50)};
+}
+
+function fmt(x){ return x.toFixed(1).replace('.', ','); }
+
+function renderTable(activeN){
+  tbody.innerHTML='';
+  sizes.forEach(n=>{
+    const r = results[n];
+    const tr=document.createElement('tr');
+    if(n===activeN) tr.classList.add('active');
+    tr.innerHTML = r ?
+      `<td>${n}</td><td>${r.kull}</td><td>${fmt(r.kullPct)}%</td><td>${r.kiri}</td><td>${fmt(r.kiriPct)}%</td><td>${fmt(r.diff)} protsendipunkti</td>` :
+      `<td>${n}</td><td colspan="5">Pole veel simuleeritud</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderBars(r){
+  document.getElementById('kullBar').style.width = r.kullPct+'%';
+  document.getElementById('kiriBar').style.width = r.kiriPct+'%';
+  document.getElementById('kullPct').textContent = fmt(r.kullPct)+'%';
+  document.getElementById('kiriPct').textContent = fmt(r.kiriPct)+'%';
+}
+
+document.getElementById('runBtn').addEventListener('click',()=>{
+  const n = Number(document.getElementById('nSelect').value);
+  const r = simulate(n); results[n]=r; renderTable(n); renderBars(r);
+});
+
+document.getElementById('runAllBtn').addEventListener('click',()=>{
+  sizes.forEach(n=>results[n]=simulate(n));
+  const n = Number(document.getElementById('nSelect').value);
+  renderTable(n); renderBars(results[n]);
+});
+
+renderTable(null);
+</script>
+</body>
+</html>
