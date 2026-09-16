@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="et">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Normaaljaotuse kontrollimise labor</title>
+<style>
+:root{
+  --panel:#f7f9fb; --card:#ffffff; --text:#1f2937; --muted:#667085; --border:#d0d5dd;
+  --accent:#2f80ed; --accent-bg:#eaf3ff; --series2:#4f8fcf; --series4:#d97706;
+}
+body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:20px;background:#fff;color:var(--text);}
+h1{font-size:1.5rem;margin:0 0 14px;color:#1f4e79}
+#normlab .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px}
+#normlab .card{background:var(--card);border:1px solid var(--border);border-radius:12px}
+#normlab .muted{color:var(--muted)}
+#normlab .controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+#normlab .plots{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+#normlab .stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+#normlab label{display:block;font-weight:600;font-size:.88rem;margin-bottom:4px}
+#normlab select,#normlab input{width:100%;box-sizing:border-box}
+#normlab select{padding:9px;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--text)}
+#normlab button{padding:9px 12px;border:1px solid var(--border);border-radius:9px;background:var(--card);font-weight:600;color:var(--text);cursor:pointer}
+#normlab .primary{background:var(--accent-bg);border-color:var(--accent)}
+#normlab .stat{text-align:center;padding:9px}
+#normlab .stat strong{display:block;font-size:1.05rem}
+#normlab svg{width:100%;height:auto;display:block}
+#normlab .qrow{display:grid;grid-template-columns:1fr auto;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)}
+#normlab .badge{border:1px solid var(--border);border-radius:999px;padding:3px 8px;font-size:.78rem}
+.p-4{padding:16px}.p-3{padding:12px}.mb-4{margin-bottom:16px}.mb-3{margin-bottom:12px}.mb-2{margin-bottom:8px}.mb-1{margin-bottom:4px}.mt-3{margin-top:12px}.mt-2{margin-top:8px}
+.flex{display:flex}.flex-wrap{flex-wrap:wrap}.gap-2{gap:8px}.font-semibold{font-weight:600}.text-sm{font-size:.9rem}.text-xs{font-size:.78rem}
+@media(max-width:760px){#normlab .controls,#normlab .plots{grid-template-columns:1fr 1fr}#normlab .stats{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){#normlab .controls,#normlab .plots{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<h1>Normaaljaotuse kontrollimise labor</h1>
+
+<div id="normlab">
+<p class="text-sm muted mb-3">Muuda jaotust ja vaata, kuidas histogramm, arvkarakteristikud ja Q-Q graafik muutuvad koos.</p>
+
+<section class="panel p-4 mb-4">
+  <div class="controls">
+    <div>
+      <label for="dist">Jaotuse tüüp</label>
+      <select id="dist">
+        <option value="normal">Ligikaudu normaalne</option>
+        <option value="right">Parempoolne asümmeetria</option>
+        <option value="left">Vasakpoolne asümmeetria</option>
+        <option value="heavy">Raskemad sabad</option>
+        <option value="outlier">Normaalne + erind</option>
+      </select>
+    </div>
+    <div>
+      <label>Valimi maht n: <span id="nv">50</span></label>
+      <input id="n" type="range" min="20" max="500" step="10" value="50">
+    </div>
+    <div>
+      <label>Keskväärtus μ: <span id="muv">175</span></label>
+      <input id="mu" type="range" min="150" max="200" step="1" value="175">
+    </div>
+    <div>
+      <label>Standardhälve σ: <span id="sdv">10</span></label>
+      <input id="sd" type="range" min="3" max="25" step="1" value="10">
+    </div>
+  </div>
+  <div class="flex flex-wrap gap-2 mt-3">
+    <button id="regen" type="button" class="primary">Tekita uus valim</button>
+    <button id="toggle" type="button">Peida Q-Q võrdlusjoon</button>
+  </div>
+</section>
+
+<section class="stats mb-4">
+  <div class="card stat"><span class="text-xs muted">Keskmine</span><strong id="mean">–</strong></div>
+  <div class="card stat"><span class="text-xs muted">Mediaan</span><strong id="med">–</strong></div>
+  <div class="card stat"><span class="text-xs muted">Standardhälve</span><strong id="sdo">–</strong></div>
+  <div class="card stat"><span class="text-xs muted">Asümmeetria</span><strong id="skew">–</strong></div>
+  <div class="card stat"><span class="text-xs muted">Ekstsess</span><strong id="kurt">–</strong></div>
+</section>
+
+<section class="plots mb-4">
+  <div class="card p-3">
+    <h3 class="font-semibold mb-1">Histogramm + normaaljaotuse kõver</h3>
+    <p class="text-xs muted mb-2">Histogramm näitab valimit; joon näitab sama keskmise ja standardhälbega normaaljaotuse mudelit.</p>
+    <div id="hist"></div>
+  </div>
+  <div class="card p-3">
+    <h3 class="font-semibold mb-1">Q-Q graafik</h3>
+    <p class="text-xs muted mb-2">Normaaljaotuse korral paiknevad punktid ligikaudu sirgel.</p>
+    <div id="qq"></div>
+  </div>
+</section>
+
+<section class="panel p-4">
+  <h3 class="font-semibold mb-2">Mida märkad?</h3>
+  <div class="qrow"><span>Histogramm on ligikaudu sümmeetriline.</span><span id="b1" class="badge">–</span></div>
+  <div class="qrow"><span>Keskmine ja mediaan on lähestikku.</span><span id="b2" class="badge">–</span></div>
+  <div class="qrow"><span>Asümmeetriakordaja on nulli lähedal.</span><span id="b3" class="badge">–</span></div>
+  <div class="qrow"><span>Q-Q punktid paiknevad ligikaudu sirgel.</span><span id="b4" class="badge">–</span></div>
+  <div class="card p-3 mt-3"><strong>Järeldus: </strong><span id="conc">–</span></div>
+  <p class="text-xs muted mt-2">See on õppimiseks mõeldud visuaalne diagnostika, mitte formaalne normaaljaotuse test.</p>
+</section>
+</div>
+
+<script>
+(()=>{const r=document.getElementById('normlab');const q=id=>r.querySelector('#'+id);let sample=[],show=true;
+function rn(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
+function st(a){const n=a.length,m=a.reduce((s,x)=>s+x,0)/n,b=[...a].sort((x,y)=>x-y),md=n%2?b[(n-1)/2]:(b[n/2-1]+b[n/2])/2,m2=a.reduce((s,x)=>s+(x-m)**2,0)/n,sd=Math.sqrt(a.reduce((s,x)=>s+(x-m)**2,0)/(n-1)),m3=a.reduce((s,x)=>s+(x-m)**3,0)/n,m4=a.reduce((s,x)=>s+(x-m)**4,0)/n;return{m,md,sd,sk:m3/Math.pow(m2,1.5),ku:m4/(m2*m2)-3,b}}
+function sc(a,mu,sd){const z=st(a);return a.map(x=>mu+(x-z.m)*sd/z.sd)}
+function inv(p){const a=[-39.6968302866538,220.946098424521,-275.928510446969,138.357751867269,-30.6647980661472,2.50662827745924],b=[-54.4760987982241,161.585836858041,-155.698979859887,66.8013118877197,-13.2806815528857],c=[-.00778489400243029,-.322396458041136,-2.40075827716184,-2.54973253934373,4.37466414146497,2.93816398269878],d=[.00778469570904146,.32246712907004,2.445134137143,3.75440866190742],pl=.02425,ph=1-pl;let x,y;if(p<pl){x=Math.sqrt(-2*Math.log(p));return (((((c[0]*x+c[1])*x+c[2])*x+c[3])*x+c[4])*x+c[5])/((((d[0]*x+d[1])*x+d[2])*x+d[3])*x+1)}if(p>ph){x=Math.sqrt(-2*Math.log(1-p));return -(((((c[0]*x+c[1])*x+c[2])*x+c[3])*x+c[4])*x+c[5])/((((d[0]*x+d[1])*x+d[2])*x+d[3])*x+1)}x=p-.5;y=x*x;return (((((a[0]*y+a[1])*y+a[2])*y+a[3])*y+a[4])*y+a[5])*x/(((((b[0]*y+b[1])*y+b[2])*y+b[3])*y+b[4])*y+1)}
+function gen(){const n=+q('n').value,mu=+q('mu').value,sd=+q('sd').value,k=q('dist').value;let a=[];for(let i=0;i<n;i++){if(k==='normal'||k==='outlier')a.push(rn());else if(k==='right')a.push(Math.exp(.8*rn()));else if(k==='left')a.push(-Math.exp(.8*rn()));else{let z=rn(),chi=0;for(let j=0;j<3;j++){let g=rn();chi+=g*g}a.push(z/Math.sqrt(chi/3))}}if(k==='outlier')a[Math.floor(Math.random()*n)]=5;sample=sc(a,mu,sd);draw()}
+function svg(tag,at={}){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(at).forEach(([k,v])=>e.setAttribute(k,v));return e}
+function hist(z){const box=q('hist');box.innerHTML='';const W=500,H=280,m={l:38,r:10,t:10,b:32},iw=W-m.l-m.r,ih=H-m.t-m.b,lo=Math.min(...sample),hi=Math.max(...sample),B=Math.max(8,Math.min(22,Math.round(Math.sqrt(sample.length)))),bw=(hi-lo||1)/B,c=Array(B).fill(0);sample.forEach(v=>{let i=Math.floor((v-lo)/(hi-lo||1)*B);c[Math.min(B-1,Math.max(0,i))]++});const d=c.map(x=>x/(sample.length*bw)),pk=Math.max(...d,1/(z.sd*Math.sqrt(2*Math.PI))),sx=x=>m.l+(x-lo)/(hi-lo||1)*iw,sy=y=>m.t+ih-y/pk*ih,S=svg('svg',{viewBox:`0 0 ${W} ${H}`});S.appendChild(svg('line',{x1:m.l,y1:m.t+ih,x2:m.l+iw,y2:m.t+ih,stroke:'currentColor'}));for(let i=0;i<B;i++)S.appendChild(svg('rect',{x:sx(lo+i*bw),y:sy(d[i]),width:Math.max(1,sx(lo+(i+1)*bw)-sx(lo+i*bw)-1),height:m.t+ih-sy(d[i]),fill:'var(--series2)',opacity:.65}));let p='';for(let j=0;j<=120;j++){let x=lo+(hi-lo)*j/120,y=Math.exp(-.5*((x-z.m)/z.sd)**2)/(z.sd*Math.sqrt(2*Math.PI));p+=(j?'L':'M')+sx(x)+' '+sy(y)+' '}S.appendChild(svg('path',{d:p,fill:'none',stroke:'var(--series4)','stroke-width':3}));box.appendChild(S)}
+function qq(z){const box=q('qq');box.innerHTML='';const W=500,H=280,m={l:45,r:10,t:10,b:32},iw=W-m.l-m.r,ih=H-m.t-m.b,pts=z.b.map((y,i)=>({x:inv((i+.5)/z.b.length),y})),xl=Math.min(...pts.map(p=>p.x)),xh=Math.max(...pts.map(p=>p.x)),yl=Math.min(...pts.map(p=>p.y)),yh=Math.max(...pts.map(p=>p.y)),sx=x=>m.l+(x-xl)/(xh-xl)*iw,sy=y=>m.t+ih-(y-yl)/(yh-yl)*ih,S=svg('svg',{viewBox:`0 0 ${W} ${H}`});S.appendChild(svg('line',{x1:m.l,y1:m.t+ih,x2:m.l+iw,y2:m.t+ih,stroke:'currentColor'}));if(show)S.appendChild(svg('line',{x1:sx(xl),y1:sy(z.m+z.sd*xl),x2:sx(xh),y2:sy(z.m+z.sd*xh),stroke:'var(--series4)','stroke-width':2}));pts.forEach(p=>S.appendChild(svg('circle',{cx:sx(p.x),cy:sy(p.y),r:3,fill:'var(--series2)'})));box.appendChild(S);const ybar=pts.reduce((s,p)=>s+p.y,0)/pts.length,sse=pts.reduce((s,p)=>s+(p.y-(z.m+z.sd*p.x))**2,0),sst=pts.reduce((s,p)=>s+(p.y-ybar)**2,0);return 1-sse/sst}
+function badge(id,v,mid=false){q(id).textContent=mid?'osaliselt':v?'jah':'ei'}
+function draw(){q('nv').textContent=q('n').value;q('muv').textContent=q('mu').value;q('sdv').textContent=q('sd').value;const z=st(sample);q('mean').textContent=z.m.toFixed(2);q('med').textContent=z.md.toFixed(2);q('sdo').textContent=z.sd.toFixed(2);q('skew').textContent=z.sk.toFixed(2);q('kurt').textContent=z.ku.toFixed(2);hist(z);const r2=qq(z),a=Math.abs(z.sk)<.7,b=Math.abs(z.m-z.md)<.2*z.sd,c=Math.abs(z.sk)<.5,d=r2>.97;badge('b1',a,Math.abs(z.sk)>=.5&&Math.abs(z.sk)<.9);badge('b2',b);badge('b3',c,Math.abs(z.sk)>=.5&&Math.abs(z.sk)<1);badge('b4',d,r2>.93&&r2<=.97);const s=[a,b,c,d].filter(Boolean).length;q('conc').textContent=s>=3?'Enamik tunnuseid toetab normaaljaotuse kasutamist ligikaudse mudelina.':s===2?'Tulemused on vastuolulised. Vaata histogrammi, arvkarakteristikuid ja Q-Q graafikut koos.':'Mitmed tunnused viitavad sellele, et normaaljaotus ei kirjelda seda valimit hästi.'}
+['n','mu','sd'].forEach(id=>q(id).addEventListener('input',()=>{q('nv').textContent=q('n').value;q('muv').textContent=q('mu').value;q('sdv').textContent=q('sd').value}));
+['n','mu','sd','dist'].forEach(id=>q(id).addEventListener('change',gen));
+q('regen').addEventListener('click',gen);
+q('toggle').addEventListener('click',()=>{show=!show;q('toggle').textContent=show?'Peida Q-Q võrdlusjoon':'Näita Q-Q võrdlusjoont';draw()});
+gen()})();
+</script>
+</body>
+</html>
